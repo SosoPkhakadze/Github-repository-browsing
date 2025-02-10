@@ -26,11 +26,24 @@
             </div>
             
             <div class="p-6">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">Your Repositories</h2>
+                <div class="mb-4 flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-800">Your Repositories</h2>
+                    <div>
+                        <label for="tech-filter" class="mr-2 text-gray-700">Filter by Technology:</label>
+                        <select id="tech-filter" class="border rounded px-2 py-1">
+                            <option value="">All Technologies</option>
+                            {% for tech in technologies %}
+                            <option value="{{ tech }}">{{ tech }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
                 {% if repos %}
-                    <div class="grid md:grid-cols-2 gap-4">
+                    <div id="repos-container" class="grid md:grid-cols-2 gap-4">
                     {% for repo in repos %}
-                        <div class="bg-gray-100 rounded-lg p-4 hover:shadow-md transition-all duration-300">
+                        <div class="repo-item bg-gray-100 rounded-lg p-4 hover:shadow-md transition-all duration-300" 
+                             data-language="{{ repo.language or '' }}">
                             <a href="{{ repo.html_url }}" target="_blank" class="text-blue-600 hover:text-blue-800 font-medium text-lg">
                                 {{ repo.name }}
                             </a>
@@ -69,5 +82,22 @@
             </footer>
         </div>
     </div>
+
+    <script>
+        document.getElementById('tech-filter').addEventListener('change', function() {
+            const selectedTech = this.value;
+            const repoItems = document.querySelectorAll('.repo-item');
+            
+            repoItems.forEach(item => {
+                const repoLanguage = item.getAttribute('data-language');
+                
+                if (selectedTech === '' || repoLanguage === selectedTech) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    </script>
 </body>
 </html>

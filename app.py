@@ -2,14 +2,13 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, redirect, url_for, render_template, session
 from authlib.integrations.flask_client import OAuth
-import requests  # Import requests explicitly
+import requests
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# OAuth Configuration (same as before)
 oauth = OAuth(app)
 github = oauth.register(
     name='github',
@@ -26,47 +25,47 @@ github = oauth.register(
 
 @app.route('/')
 def index():
-    print(f"DEBUG: Session contents at start of /: {session}")
-
     if 'github_token' not in session:
-        print("DEBUG: No github_token in session, showing login link")
         return '<a href="/login">Login with GitHub</a>'
 
     all_repos = []
     page = 1
+    technologies = set()
 
-    try:  # Outer try...except for ANY error
+    try:
         while True:
-            try:  # Inner try...except for THIS SPECIFIC REQUEST
-                # Construct the URL manually for extra debugging
+            try:
                 url = f'https://api.github.com/user/repos?page={page}&per_page=100'
-                print(f"DEBUG: Fetching URL: {url}")
-
-                #Use request library directly.
                 headers = {'Authorization': 'Bearer ' + session['github_token']['access_token']}
                 response = requests.get(url, headers=headers)
-
-                response.raise_for_status() #Check for errors
+                response.raise_for_status()
                 repos_page = response.json()
-
 
                 if not repos_page:
                     break
 
+                for repo in repos_page:
+                    if repo.get('language'):
+                        technologies.add(repo['language'])
+
                 all_repos.extend(repos_page)
                 page += 1
-            except requests.exceptions.RequestException as e: # CATCH REQUESTS ERRORS
+            except requests.exceptions.RequestException as e:
                 print(f"DEBUG: Detailed HTTP error: {e}")
-                # Log details, but don't show them to the user
                 return render_template('error.html', message="Failed to fetch repositories (HTTP error).")
-
 
     except Exception as e:
         print(f"DEBUG: Unexpected error: {e}")
         return render_template('error.html', message="An unexpected error occurred.")
 
-    print(f"DEBUG: Successfully fetched {len(all_repos)} repositories")
-    return render_template('index.html', user_info=session.get('user_info', {}), repos=all_repos)
+    technologies = sorted(list(technologies))
+
+    return render_template(
+        'index.html', 
+        user_info=session.get('user_info', {}), 
+        repos=all_repos, 
+        technologies=technologies
+    )
 
 @app.route('/login')
 def login():
@@ -78,11 +77,11 @@ def callback():
     token = github.authorize_access_token()
     if token is None:
          return redirect('/')
-    resp = github.get('user', token=token) #Getting user's information
-    profile = resp.json() #Converting to json
+    resp = github.get('user', token=token)
+    profile = resp.json()
 
     session['github_token'] = token
-    session['user_info'] = {  #store required data in session
+    session['user_info'] = { 
         'username': profile.get('login'),
         'avatar_url': profile.get('avatar_url')
     }
