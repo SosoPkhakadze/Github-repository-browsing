@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Repository Browser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <div class="bg-white shadow-lg rounded-lg p-8 max-w-md w-full text-center">
+        <h1 class="text-3xl font-bold mb-4 text-gray-800">GitHub Repository Browser</h1>
+        <div class="mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            <p class="text-gray-600 mt-4">Log in to browse your GitHub repositories</p>
+        </div>
+        <a href="/login" class="inline-block bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition duration-300 shadow-md">
+            Login with GitHub
+        </a>
+        <div class="mt-6 text-sm text-gray-500">
+            <p>This app requires GitHub OAuth to access your repositories.</p>
+        </div>
+    </div>
+</body>
+</html>

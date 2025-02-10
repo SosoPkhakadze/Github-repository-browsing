@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask, redirect, url_for, render_template, session
+from flask import Flask, redirect, url_for, render_template, session, request
 from authlib.integrations.flask_client import OAuth
 import requests
 
@@ -8,6 +8,9 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+
+if not os.environ.get('GITHUB_CLIENT_ID') or not os.environ.get('GITHUB_CLIENT_SECRET'):
+    raise ValueError("GitHub OAuth credentials must be set in .env file")
 
 oauth = OAuth(app)
 github = oauth.register(
@@ -22,11 +25,10 @@ github = oauth.register(
     client_kwargs={'scope': 'repo read:user'},
 )
 
-
 @app.route('/')
 def index():
     if 'github_token' not in session:
-        return '<a href="/login">Login with GitHub</a>'
+        return render_template('login.html')
 
     all_repos = []
     page = 1
@@ -36,7 +38,7 @@ def index():
         while True:
             try:
                 url = f'https://api.github.com/user/repos?page={page}&per_page=100'
-                headers = {'Authorization': 'Bearer ' + session['github_token']['access_token']}
+                headers = {'Authorization': f'Bearer {session["github_token"]["access_token"]}'}
                 response = requests.get(url, headers=headers)
                 response.raise_for_status()
                 repos_page = response.json()
@@ -51,15 +53,14 @@ def index():
                 all_repos.extend(repos_page)
                 page += 1
             except requests.exceptions.RequestException as e:
-                print(f"DEBUG: Detailed HTTP error: {e}")
-                return render_template('error.html', message="Failed to fetch repositories (HTTP error).")
+                app.logger.error(f"GitHub API error: {e}")
+                return render_template('error.html', message="Failed to fetch repositories")
 
     except Exception as e:
-        print(f"DEBUG: Unexpected error: {e}")
-        return render_template('error.html', message="An unexpected error occurred.")
+        app.logger.error(f"Unexpected error: {e}")
+        return render_template('error.html', message="An unexpected error occurred")
 
     technologies = sorted(list(technologies))
-
     return render_template(
         'index.html', 
         user_info=session.get('user_info', {}), 
@@ -74,24 +75,32 @@ def login():
 
 @app.route('/callback')
 def callback():
-    token = github.authorize_access_token()
-    if token is None:
-         return redirect('/')
-    resp = github.get('user', token=token)
-    profile = resp.json()
+    try:
+        token = github.authorize_access_token()
+        if not token:
+            return redirect('/')
 
-    session['github_token'] = token
-    session['user_info'] = { 
-        'username': profile.get('login'),
-        'avatar_url': profile.get('avatar_url')
-    }
-    print(f"DEBUG: Session contents after callback: {session}")
+        resp = github.get('user', token=token)
+        profile = resp.json()
+
+        session['github_token'] = token
+        session['user_info'] = {
+            'username': profile.get('login'),
+            'avatar_url': profile.get('avatar_url')
+        }
+        return redirect(url_for('index'))
+    except Exception as e:
+        app.logger.error(f"Callback error: {e}")
+        return render_template('error.html', message="Authentication failed")
+
+@app.route('/logout')
+def logout():
+    session.clear()
     return redirect(url_for('index'))
 
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
-
 
 if __name__ == '__main__':
     app.run()
